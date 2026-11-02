@@ -85,7 +85,7 @@
     return m[0].replace(/^[。；;\s]+/, '').replace(/[。；;]$/, '').trim();
   }
 
-  function localAnalyze(q, picked, ms) {
+  function localAnalyze(q, picked, ms, selfReason) {
     const cat = catOf(q);
     const correct = (q.answer || []).slice().sort();
     const mine = (picked || []).slice().sort();
@@ -151,7 +151,7 @@
     if (q.category && knowledge.indexOf(q.category) < 0) knowledge.unshift(q.category);
     const method = (CAT_METHOD[cat] || CAT_METHOD['常识判断']).slice();
 
-    return {
+    const res = {
       errorType: errorType,
       diagnosis: diagnosis,
       trap: trap,
@@ -160,6 +160,30 @@
       reminder: CAT_REMIND[cat] || '慢一点读题，快一点排除。',
       source: 'local',
     };
+
+    // 学生自己补充的错因：先判断类型，再把自述揉进诊断里
+    const note = String(selfReason || '').trim();
+    if (note) {
+      const shortNote = note.slice(0, 80);
+      const RULES = [
+        { re: /粗心|看错|没看清|审题|漏看|没注意|看漏/, type: '审题偏差',
+          lead: '这类失分往往不是不会，而是设问或限定词没读完整。先把题干最后一句圈出来，再回头看选项。' },
+        { re: /蒙|猜|来不及|时间|没时间|最后几秒/, type: '时间不足 / 蒙猜',
+          lead: '时间压力下正确率会明显下降，问题可能在取舍策略，而不是这一题本身。' },
+        { re: /知识点|没学|忘|不知道|不熟|没背/, type: '知识点盲区',
+          lead: '这属于知识覆盖问题，补考点比继续堆题量更有效。' },
+        { re: /算错|计算|单位|小数点|算漏/, type: '计算失误',
+          lead: '思路方向对了，但计算或单位出了错，这是可以靠步骤规范修正的手误。' },
+        { re: /纠结|排除|两个选项|不确定|二选一/, type: '选项辨析不清',
+          lead: '能排除到两个选项，说明基础够，差在辨析维度（范围、程度、主体、方向）。' },
+      ];
+      const hit = RULES.filter((r) => r.re.test(note))[0];
+      if (hit) res.errorType = hit.type;
+      res.diagnosis = (hit ? hit.lead : '结合你的描述来看：') + res.diagnosis;
+      res.selfReason = shortNote;
+    }
+
+    return res;
   }
 
   /* ---------------- 在线调用 ---------------- */
@@ -236,7 +260,7 @@
     try { return JSON.parse(t); } catch (e) { return null; }
   }
 
-  function promptFor(q, picked, ms) {
+  function promptFor(q, picked, ms, selfReason) {
     const opts = (q.options || []).map((o) => o.k + '. ' + UI.plain(o.text)).join('\n');
     const correct = (q.answer || []).join('');
     const mine = (picked || []).join('') || '未作答';
@@ -246,12 +270,14 @@
       '学生刚做完一道「' + (q.category || '行测') + '」题，请判断他为什么会错（如果答对了，就复盘易错点和更快的解法）。',
       '要求：必须结合本题的具体内容（关键词、数据、选项表述），不要说“加强练习”“注意审题”这类空话；',
       '如果涉及计算，请指出是哪一步算错或列错式；如果选错，请说明他被哪个词或哪层逻辑带偏。',
+      (selfReason ? '学生补充了自己的真实想法。请先判断这份自述是否解释了这次错选：一致就顺着他的描述给出具体改进动作；如果和选项、用时或解析矛盾，先肯定他的感受，再指出更可能的真实原因。不要简单重复他的话。' : ''),
       '',
       '【题干】' + UI.plain(q.stem || '').slice(0, 1200),
       '【选项】\n' + opts,
       '【正确答案】' + correct,
       '【学生选择】' + mine + (ms ? '（用时 ' + Math.round(ms / 1000) + ' 秒）' : ''),
       '【官方解析】' + exp,
+      (selfReason ? '【学生自述的真实错因】' + String(selfReason).slice(0, 200) : ''),
       '',
       '只输出一个 JSON 对象，不要任何多余文字，字段如下：',
       '{"errorType":"从[审题偏差,知识点盲区,近义词辨析失误,语境理解偏差,概念混淆,计算失误,选项陷阱,时间不足/蒙猜,论证方向误判,规律识别偏差]中选最贴切的一个",',
@@ -263,13 +289,14 @@
     ].join('\n');
   }
 
-  async function analyze(q, picked, ms) {
-    const fallback = localAnalyze(q, picked, ms);
+  async function analyze(q, picked, ms, selfReason) {
+    const fallback = localAnalyze(q, picked, ms, selfReason);
+    const note = String(selfReason || '').trim();
     if (!hasKey()) return Promise.resolve(fallback);
     try {
       const text = await chat([
         { role: 'system', content: '你是严谨、具体的公考行测老师，只输出合法 JSON。' },
-        { role: 'user', content: promptFor(q, picked, ms) },
+        { role: 'user', content: promptFor(q, picked, ms, note) },
       ], { json: true, maxTokens: 800 });
       const data = parseJson(text);
       if (!data || !data.diagnosis) {
@@ -282,6 +309,7 @@
         knowledge: Array.isArray(data.knowledge) ? data.knowledge.slice(0, 5) : fallback.knowledge,
         method: Array.isArray(data.method) ? data.method.slice(0, 4) : fallback.method,
         reminder: data.reminder || fallback.reminder,
+        selfReason: note ? note.slice(0, 80) : '',
         source: 'ai',
       };
     } catch (e) {

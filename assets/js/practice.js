@@ -294,6 +294,7 @@
       '<div class="exp-block-title">官方解析</div>' +
       '<div class="q-explanation">' + (UI.formatExp(clean(q.explanation)) || '<span class="muted">本题暂无解析</span>') + '</div>' +
       '<div data-ai>' + aiPanelHtml(q, picked) + '</div>' +
+      reasonBox(q) +
       noteHtml(q) +
     '</div>';
   }
@@ -303,6 +304,25 @@
     if (!note) return '';
     return '<div class="field-hint" style="margin-top:14px;background:var(--amber-soft);padding:10px 12px;border-radius:8px;color:#7c4a03">' +
       '<b>我的笔记：</b>' + esc(note) + '</div>';
+  }
+
+  function reasonBox(q) {
+    const val = Store.state.reasons[q.id] || '';
+    const tips = ['粗心看错题', '知识点没记住', '时间不够，最后蒙的', '两个选项纠结很久'];
+    return '<div class="reason-box">' +
+      '<div class="reason-head">' +
+        '<span class="reason-title">' + icon('note', 14) + '分析不准？说说你当时的真实想法</span>' +
+        '<span class="reason-sub">' + (AI.hasKey() ? '会随题目一起发给模型' : '本地诊断会参考你的说明') + '</span>' +
+      '</div>' +
+      '<textarea class="reason-input" data-reason maxlength="300" placeholder="例如：把“同比”看成“环比”了；最后 10 秒蒙的；两个选项纠结很久……">' + esc(val) + '</textarea>' +
+      '<div class="reason-chips">' +
+        tips.map((t) => '<button class="chip" data-reason-chip="' + t + '">' + t + '</button>').join('') +
+      '</div>' +
+      '<div class="reason-foot">' +
+        '<span class="reason-tip">只保存在本机，不会公开</span>' +
+        '<button class="btn btn-sm btn-soft" data-reanalyze-self>' + icon('sparkles', 14) + '结合我的说明重新分析</button>' +
+      '</div>' +
+    '</div>';
   }
 
   function aiPanelHtml(q, picked) {
@@ -334,6 +354,7 @@
           '<div class="ai-sub">' + esc(a.errorType || '') + '</div></div>' + tag + '</div>' +
       '<div class="ai-body">' +
         (a.error ? '<div class="field-hint" style="color:var(--amber);margin-bottom:8px">在线分析未成功：' + esc(a.error) + '，以下为本地诊断。</div>' : '') +
+        (a.selfReason ? '<div class="ai-self">你的补充：' + esc(a.selfReason) + '</div>' : '') +
         '<p>' + esc(a.diagnosis || '') + '</p>' +
         (a.trap ? '<h4>' + icon('target', 14) + '选项陷阱</h4><p>' + esc(a.trap) + '</p>' : '') +
         (a.method && a.method.length ? '<h4>' + icon('layers', 14) + '下次这样做</h4><ul>' +
@@ -383,6 +404,10 @@
 
   /* ---------------- 交互 ---------------- */
   function bindRunner(root) {
+    root.oninput = (e) => {
+      const ta = e.target.closest('[data-reason]');
+      if (ta && S) Store.setReason(S.ids[S.idx], ta.value);
+    };
     root.onclick = (e) => {
       if (!S) return;
       const q = qAt(S.idx);
@@ -458,6 +483,29 @@
         render();
         return;
       }
+      const chip = e.target.closest('[data-reason-chip]');
+      if (chip) {
+        const ta = root.querySelector('[data-reason]');
+        const t = chip.getAttribute('data-reason-chip');
+        if (ta) {
+          const old = ta.value.trim().replace(/[；;]\s*$/, '');
+          ta.value = old ? old + '；' + t : t;
+          Store.setReason(q.id, ta.value);
+          ta.focus();
+        }
+        return;
+      }
+      if (e.target.closest('[data-reanalyze-self]')) {
+        const ta = root.querySelector('[data-reason]');
+        const v = ta ? ta.value.trim() : '';
+        if (!v) { toast('先写下你当时的想法，再重新分析', 'no'); if (ta) ta.focus(); return; }
+        Store.setReason(q.id, v);
+        aiCache[q.id] = null;
+        ensureAI(q, S.picks[q.id] || []);
+        rerenderAI(q);
+        toast('已结合你的说明重新分析', 'ok');
+        return;
+      }
       if (e.target.closest('[data-analyze]') || e.target.closest('[data-reanalyze]')) {
         aiCache[q.id] = null;
         ensureAI(q, S.picks[q.id] || []);
@@ -524,11 +572,12 @@
     if (aiCache[q.id] && !aiCache[q.id].loading) return;
     aiCache[q.id] = { loading: true };
     const ms = S.cost && S.cost[q.id] ? S.cost[q.id] : 0;
-    AI.analyze(q, picked, ms).then((res) => {
+    const reason = Store.state.reasons[q.id] || '';
+    AI.analyze(q, picked, ms, reason).then((res) => {
       aiCache[q.id] = res;
       if (S && S.ids[S.idx] === q.id) rerenderAI(q);
     }).catch(() => {
-      aiCache[q.id] = AI.localAnalyze(q, picked, ms);
+      aiCache[q.id] = AI.localAnalyze(q, picked, ms, reason);
       if (S && S.ids[S.idx] === q.id) rerenderAI(q);
     });
   }

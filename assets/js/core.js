@@ -186,6 +186,7 @@
     records: {},
     favs: [],
     notes: {},
+    reasons: {},
     sessions: [],
     days: {},
     current: null,
@@ -206,6 +207,7 @@
             this.state = Object.assign(base, data, {
               settings: Object.assign(base.settings, data.settings || {}),
             });
+            if (!this.state.reasons || typeof this.state.reasons !== 'object') this.state.reasons = {};
           }
         }
       } catch (e) {
@@ -246,6 +248,13 @@
       d.ms += ms || 0;
       this.save();
       return r;
+    },
+
+    setReason(qid, text) {
+      const t = String(text || '').trim();
+      if (t) this.state.reasons[qid] = t.slice(0, 300);
+      else delete this.state.reasons[qid];
+      this.save();
     },
 
     isFav(qid) { return this.state.favs.indexOf(qid) >= 0; },
@@ -293,6 +302,7 @@
       this.state.days = {};
       this.state.favs = [];
       this.state.notes = {};
+      this.state.reasons = {};
       this.state.current = null;
       this.save(true);
     },

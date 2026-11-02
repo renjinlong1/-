@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """本地 OpenAI 兼容 mock 服务，用于验证前端的 AI 分析链路（不消耗真实额度）。"""
 import json
+import re
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 
@@ -21,9 +22,15 @@ class Handler(BaseHTTPRequestHandler):
         if "json" not in json.dumps(body, ensure_ascii=False).lower() and "回复" not in json.dumps(body, ensure_ascii=False):
             content = "可用"
         else:
+            prompt = "\n".join(m.get("content", "") for m in body.get("messages", []) if isinstance(m, dict))
+            note = ""
+            m = re.search(r"【学生自述的真实错因】([^\n【]+)", prompt)
+            if m:
+                note = m.group(1).strip()
+            base = ("（已参考你的补充：%s）" % note) if note else ""
             content = json.dumps({
                 "errorType": "语境理解偏差",
-                "diagnosis": "你把注意力放在了选项本身的通顺程度上，没有回到题干对「沙丘向西迁移」这一结论的限定。正确答案所在的④处前后正是观点与原因的衔接点。",
+                "diagnosis": base + "你把注意力放在了选项本身的通顺程度上，没有回到题干对「沙丘向西迁移」这一结论的限定。正确答案所在的④处前后正是观点与原因的衔接点。",
                 "trap": "①处和②处读起来也很顺，因为它们是介绍性内容，和题干没有语义冲突，但与设问要求的「填入位置」不匹配。",
                 "knowledge": ["语句衔接", "话题一致", "观点与论据"],
                 "method": ["先看空格前后的指代词与结论句", "用题干关键词回文定位", "代入后检查前后句子是否连贯"],

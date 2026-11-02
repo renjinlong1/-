@@ -549,6 +549,19 @@ kbd {
 .ai-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
 .ai-tag { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: #f3f0ff; color: #6d3bd4; border: 1px solid #e6ddff; }
 .ai-note { font-size: 11px; color: var(--ink-4); padding: 0 16px 12px; }
+.ai-self { margin-bottom: 8px; padding: 7px 10px; border-left: 2px solid #a78bfa; border-radius: 4px; background: #f7f5ff; font-size: 12px; color: #5b21b6; }
+
+.reason-box { margin-top: 14px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-2); }
+.reason-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.reason-title { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 650; color: var(--ink); }
+.reason-title svg { width: 14px; height: 14px; color: var(--ink-3); }
+.reason-sub { font-size: 11px; color: var(--ink-4); }
+.reason-input { display: block; width: 100%; margin-top: 10px; min-height: 64px; padding: 9px 11px; border: 1px solid var(--line-strong); border-radius: 9px; background: #fff; font-size: 13px; line-height: 1.65; resize: vertical; outline: none; font-family: var(--font); color: var(--ink); }
+.reason-input:focus { border-color: var(--brand-2); box-shadow: 0 0 0 3px rgba(58, 107, 255, .1); }
+.reason-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.reason-chips .chip { height: 26px; padding: 0 9px; font-size: 11.5px; border-radius: 7px; }
+.reason-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
+.reason-tip { font-size: 11px; color: var(--ink-4); }
 .ai-actions { display: flex; align-items: center; gap: 8px; padding: 0 16px 14px; flex-wrap: wrap; }
 
 .skeleton { padding: 4px 0; }
@@ -736,6 +749,7 @@ kbd {
   display: flex; align-items: center; gap: 8px; max-width: 88vw;
 }
 .toast.ok { background: #0b6b46; }
+body.focus-mode .toast-root { top: 84px; }
 .toast.no { background: #a82a2a; }
 @keyframes toastIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
 
@@ -821,6 +835,9 @@ kbd {
   .setup-summary [data-start] { flex: 1 0 100%; height: 46px; }
   .keyboard-hint { display: none; }
   .q-actions .hint-key { display: none; }
+  .reason-head { flex-direction: column; gap: 2px; }
+  .reason-foot { flex-wrap: wrap; }
+  .reason-foot .btn { width: 100%; }
   .provider-grid { grid-template-columns: repeat(2, 1fr); }
   .runner-foot { padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); }
   .runner-foot .btn { flex: 1; }
@@ -828,6 +845,7 @@ kbd {
   .ring-card { padding: 16px; }
   .stat-hero { gap: 10px; }
   .report-score .num { font-size: 40px; }
+  body.focus-mode .toast-root { top: 104px; }
   .bars { gap: 4px; height: 150px; }
   .bars .col .stack { max-width: 20px; }
   .chart-card { padding: 16px; }
