@@ -568,18 +568,70 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
+  function analyzeRequest(q, picked, ms) {
+    const reason = Store.state.reasons[q.id] || '';
+    aiCache[q.id] = { loading: true };
+    return AI.analyze(q, picked, ms, reason).then((res) => {
+      aiCache[q.id] = res;
+      return res;
+    }).catch(() => {
+      const res = AI.localAnalyze(q, picked, ms, reason);
+      aiCache[q.id] = res;
+      return res;
+    });
+  }
+
   function ensureAI(q, picked) {
     if (aiCache[q.id] && !aiCache[q.id].loading) return;
-    aiCache[q.id] = { loading: true };
     const ms = S.cost && S.cost[q.id] ? S.cost[q.id] : 0;
-    const reason = Store.state.reasons[q.id] || '';
-    AI.analyze(q, picked, ms, reason).then((res) => {
-      aiCache[q.id] = res;
-      if (S && S.ids[S.idx] === q.id) rerenderAI(q);
-    }).catch(() => {
-      aiCache[q.id] = AI.localAnalyze(q, picked, ms, reason);
+    analyzeRequest(q, picked, ms).then(() => {
       if (S && S.ids[S.idx] === q.id) rerenderAI(q);
     });
+  }
+
+  /** 供复盘弹窗复用：在任意容器里挂载「错因分析 + 真实错因」 */
+  function mountAnalysis(container, q, picked, ms) {
+    if (!container) return;
+    container.innerHTML = '<div data-ai>' + aiPanelHtml(q, picked) + '</div>' + reasonBox(q);
+    const aiBox = container.querySelector('[data-ai]');
+    const refresh = () => { if (aiBox) aiBox.innerHTML = aiPanelHtml(q, picked); };
+
+    container.onclick = (e) => {
+      const chip = e.target.closest('[data-reason-chip]');
+      if (chip) {
+        const ta = container.querySelector('[data-reason]');
+        const t = chip.getAttribute('data-reason-chip');
+        if (ta) {
+          const old = ta.value.trim().replace(/[；;]\s*$/, '');
+          ta.value = old ? old + '；' + t : t;
+          Store.setReason(q.id, ta.value);
+          ta.focus();
+        }
+        return;
+      }
+      if (e.target.closest('[data-reanalyze-self]')) {
+        const ta = container.querySelector('[data-reason]');
+        const v = ta ? ta.value.trim() : '';
+        if (!v) { toast('先写下你当时的想法，再重新分析', 'no'); if (ta) ta.focus(); return; }
+        Store.setReason(q.id, v);
+        analyzeRequest(q, picked, ms).then(refresh);
+        refresh();
+        return;
+      }
+      if (e.target.closest('[data-analyze]') || e.target.closest('[data-reanalyze]')) {
+        analyzeRequest(q, picked, ms).then(refresh);
+        refresh();
+      }
+    };
+    container.oninput = (e) => {
+      const ta = e.target.closest('[data-reason]');
+      if (ta) Store.setReason(q.id, ta.value);
+    };
+
+    if (!aiCache[q.id] || aiCache[q.id].loading) {
+      analyzeRequest(q, picked, ms).then(refresh);
+      refresh();
+    }
   }
 
   function rerenderAI(q) {
@@ -737,14 +789,19 @@
     ).join('');
 
     const wrongList = r.wrong.length
-      ? r.wrong.slice(0, 20).map((w) =>
-          '<div class="q-item"><div class="q-item-main">' +
+      ? r.wrong.slice(0, 20).map((w) => {
+          const qq = Bank.get(w.id);
+          const rec = Store.state.records[w.id] || {};
+          const la = qq ? AI.localAnalyze(qq, w.picked || [], rec.ms || 0, Store.state.reasons[w.id] || '') : null;
+          return '<div class="q-item"><div class="q-item-main">' +
             '<div class="q-item-top">' + modulePillMini(w.module) +
               '<span class="pill pill-outline">' + esc(w.category || '') + '</span>' +
               '<span class="pill pill-red">选 ' + (w.picked || []).join('') + ' · 对 ' + (w.answer || []).join('') + '</span></div>' +
             '<div class="q-item-stem">' + esc(UI.plain(w.stem).slice(0, 100)) + '</div>' +
-          '</div><div class="q-item-actions"><button class="btn btn-sm" data-view="' + w.id + '">看解析</button></div></div>'
-        ).join('')
+            (la ? '<div class="wrong-reason"><b>错因</b><span class="pill pill-red">' + esc(la.errorType) + '</span>' +
+              '<span class="wr-text">' + esc(UI.plain(la.diagnosis).slice(0, 92)) + '</span></div>' : '') +
+          '</div><div class="q-item-actions"><button class="btn btn-sm" data-view="' + w.id + '">解析与错因</button></div></div>';
+        }).join('')
       : '<div class="empty" style="padding:34px"><div class="empty-title">全对，没有错题</div>' +
         '<div class="empty-sub">要么题目太简单，要么你真的学会了。</div></div>';
 
@@ -855,6 +912,7 @@
 
   window.Practice = {
     start: start,
+    mountAnalysis: mountAnalysis,
     routeRun: routeRun,
     routeExamSetup: routeExamSetup,
     reportView: reportView,

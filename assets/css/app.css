@@ -648,6 +648,15 @@ kbd {
 .q-item-actions { display: flex; flex-direction: column; gap: 6px; justify-content: center; }
 .wrong-count { font-size: 11px; color: var(--red); background: var(--red-soft); padding: 2px 7px; border-radius: 5px; font-weight: 600; }
 
+.wrong-reason { display: flex; align-items: flex-start; gap: 6px; margin-top: 8px; font-size: 12px; line-height: 1.6; color: var(--ink-3); }
+.wrong-reason b { flex: 0 0 auto; color: var(--ink-2); font-weight: 600; }
+.wrong-reason .pill { flex: 0 0 auto; height: 20px; font-size: 11px; }
+.wr-text { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.review-jump { display: inline-flex; align-items: center; gap: 4px; margin-bottom: 12px; padding: 3px 10px; border-radius: 20px; border: 1px solid var(--brand-line); background: var(--brand-soft); color: var(--brand); font-size: 11.5px; }
+.review-jump:hover { background: #e6ecff; }
+.review-analysis { margin-top: 16px; scroll-margin-top: 12px; }
+.review-analysis .reason-box { margin-top: 12px; }
+
 .empty {
   padding: 60px 20px; text-align: center; border: 1px dashed var(--line-strong);
   border-radius: var(--r-lg); background: rgba(255,255,255,.6);

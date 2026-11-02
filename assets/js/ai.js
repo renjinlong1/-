@@ -165,19 +165,26 @@
     const note = String(selfReason || '').trim();
     if (note) {
       const shortNote = note.slice(0, 80);
+      // 按关键词加权打分，避免“靠猜的”把“知识点没印象”盖过去
       const RULES = [
-        { re: /粗心|看错|没看清|审题|漏看|没注意|看漏/, type: '审题偏差',
+        { type: '审题偏差', words: { '粗心': 2, '看错': 3, '审题': 3, '没看清': 3, '漏看': 3, '没注意': 2, '看漏': 3 },
           lead: '这类失分往往不是不会，而是设问或限定词没读完整。先把题干最后一句圈出来，再回头看选项。' },
-        { re: /蒙|猜|来不及|时间|没时间|最后几秒/, type: '时间不足 / 蒙猜',
-          lead: '时间压力下正确率会明显下降，问题可能在取舍策略，而不是这一题本身。' },
-        { re: /知识点|没学|忘|不知道|不熟|没背/, type: '知识点盲区',
+        { type: '知识点盲区', words: { '知识点': 4, '没印象': 4, '没学': 4, '没背': 3, '不熟': 3, '忘了': 2, '不知道': 2 },
           lead: '这属于知识覆盖问题，补考点比继续堆题量更有效。' },
-        { re: /算错|计算|单位|小数点|算漏/, type: '计算失误',
+        { type: '计算失误', words: { '算错': 4, '算漏': 3, '计算': 2, '单位': 2, '小数点': 3 },
           lead: '思路方向对了，但计算或单位出了错，这是可以靠步骤规范修正的手误。' },
-        { re: /纠结|排除|两个选项|不确定|二选一/, type: '选项辨析不清',
+        { type: '选项辨析不清', words: { '纠结': 3, '二选一': 3, '两个选项': 2, '排除': 1, '不确定': 2 },
           lead: '能排除到两个选项，说明基础够，差在辨析维度（范围、程度、主体、方向）。' },
+        { type: '时间不足 / 蒙猜', words: { '来不及': 4, '时间不够': 4, '没时间': 4, '最后几秒': 3, '蒙': 1, '猜': 1 },
+          lead: '时间压力下正确率会明显下降，问题可能在取舍策略，而不是这一题本身。' },
       ];
-      const hit = RULES.filter((r) => r.re.test(note))[0];
+      let hit = null;
+      let best = 0;
+      RULES.forEach((r) => {
+        let score = 0;
+        Object.keys(r.words).forEach((w) => { if (note.indexOf(w) >= 0) score += r.words[w]; });
+        if (score > best) { best = score; hit = r; }
+      });
       if (hit) res.errorType = hit.type;
       res.diagnosis = (hit ? hit.lead : '结合你的描述来看：') + res.diagnosis;
       res.selfReason = shortNote;

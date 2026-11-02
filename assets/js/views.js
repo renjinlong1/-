@@ -8,6 +8,16 @@
 
   function moduleOf(key) { return Bank.map[key] || Bank.modules[0]; }
 
+  /** 列表里的一行错因摘要（本地引擎，秒出） */
+  function reasonLine(q, rec) {
+    const picked = (rec && rec.lastPick) || [];
+    if (!q || !picked.length) return '';
+    const a = AI.localAnalyze(q, picked, (rec && rec.ms) || 0, Store.state.reasons[q.id] || '');
+    return '<div class="wrong-reason"><b>错因</b>' +
+      '<span class="pill pill-red">' + esc(a.errorType) + '</span>' +
+      '<span class="wr-text">' + esc(UI.plain(a.diagnosis).slice(0, 92)) + '</span></div>';
+  }
+
   function modulePill(key) {
     const m = moduleOf(key);
     return '<span class="pill" style="background:' + m.bg + ';color:' + m.fg + '">' + esc(m.short) + '</span>';
@@ -363,6 +373,7 @@
                 '<div class="q-item-stem">' + esc(UI.plain(q.stem).slice(0, 120)) + '</div>' +
                 '<div class="q-item-foot"><span>' + esc(q.source || q.paper || '') + '</span>' +
                   '<span>上次选 ' + ((r.lastPick || []).join('') || '—') + ' · 正确 ' + ((q.answer || []).join('')) + '</span></div>' +
+                reasonLine(q, r) +
               '</div>' +
               '<div class="q-item-actions">' +
                 '<button class="btn btn-sm btn-primary" data-redo="' + q.id + '">重做</button>' +
@@ -834,15 +845,26 @@
           (letterOnly ? '' : '<span class="txt">' + clean(o.text) + '</span>') + '</div>';
       }).join('');
       UI.modal({
-        title: '题目解析', sub: (q.category || '') + ' · ' + (q.source || ''), wide: true,
-        body: (material ? '<div class="q-material">' + material + '</div>' : '') +
+        title: r.lastPick && r.lastPick.length ? '解析与错因分析' : '题目解析',
+        sub: (q.category || '') + ' · ' + (q.source || ''), wide: true,
+        body: (r.lastPick && r.lastPick.length ? '<button class="review-jump" data-jump-analysis>跳到错因分析 ↓</button>' : '') +
+          (material ? '<div class="q-material">' + material + '</div>' : '') +
           '<div class="q-stem">' + clean(q.stem) + '</div><div class="options" style="margin-top:14px">' + opts + '</div>' +
-          '<div class="feedback" style="border-top:0;padding-top:12px"><div class="exp-block-title">官方解析</div>' +
-          '<div class="q-explanation">' + (UI.formatExp(clean(q.explanation)) || '<span class="muted">暂无解析</span>') + '</div></div>' +
-          (r.lastPick && r.lastPick.length ? '<div class="field-hint">你上次选择：' + r.lastPick.join('') + ' · 累计作答 ' + (r.a || 0) + ' 次，错 ' + (r.w || 0) + ' 次</div>' : ''),
+          (r.lastPick && r.lastPick.length ? '<div class="field-hint">你上次选择：' + r.lastPick.join('') + ' · 累计作答 ' + (r.a || 0) + ' 次，错 ' + (r.w || 0) + ' 次</div>' : '') +
+          (r.lastPick && r.lastPick.length ? '<div class="review-analysis" data-review-ai></div>' : '') +
+          '<div class="feedback"><div class="exp-block-title">官方解析</div>' +
+          '<div class="q-explanation">' + (UI.formatExp(clean(q.explanation)) || '<span class="muted">暂无解析</span>') + '</div></div>',
         footer: '<button class="btn" data-close>关闭</button><button class="btn btn-primary" data-practice>练这道题</button>',
         onMount(el, close) {
           UI.texify(el);
+          const box = el.querySelector('[data-review-ai]');
+          if (box && r.lastPick && r.lastPick.length && window.Practice) {
+            Practice.mountAnalysis(box, q, r.lastPick, r.ms || 0);
+          }
+          const jump = el.querySelector('[data-jump-analysis]');
+          if (jump && box) {
+            jump.addEventListener('click', () => box.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+          }
           el.querySelector('[data-practice]').addEventListener('click', () => {
             close();
             Practice.start({ mode: 'practice', ids: [id], order: 'seq' });

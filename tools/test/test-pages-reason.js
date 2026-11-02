@@ -1,0 +1,23 @@
+const { chromium } = require('playwright-core');
+(async () => {
+  const b = await chromium.launch({ executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe' });
+  const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
+  const errs = [];
+  p.on('pageerror', e => errs.push(e.message));
+  await p.goto('https://renjinlong1.github.io/-/', { waitUntil: 'networkidle', timeout: 60000 });
+  await p.goto('https://renjinlong1.github.io/-/#/practice/yy', { waitUntil: 'networkidle' });
+  await p.click('[data-start]');
+  await p.waitForTimeout(400);
+  await p.click('.opt[data-opt="A"]');
+  await p.click('[data-submit]');
+  await p.waitForTimeout(700);
+  await p.fill('[data-reason]', '我是最后时间不够蒙的');
+  await p.click('[data-reanalyze-self]');
+  await p.waitForTimeout(800);
+  const t = (await p.textContent('[data-ai]')).replace(/\s+/g, ' ');
+  console.log('live reason box:', !!(await p.$('[data-reason]')));
+  console.log('live self echo:', t.includes('你的补充：'));
+  console.log('live type:', t.includes('时间不足') ? '时间不足' : t.slice(0, 60));
+  console.log('errors:', errs.length ? errs : 'none');
+  await b.close();
+})();
