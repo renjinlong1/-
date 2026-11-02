@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>上岸 · 行测刷题</title>
+<meta name="description" content="国考、省考行测刷题工具：六大模块分类练习、真题解析、AI 错因分析、错题本与学习报告。">
+<meta name="theme-color" content="#f4f5f7">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%231f47c7'/%3E%3Ctext x='16' y='22' font-size='16' text-anchor='middle' fill='white' font-family='sans-serif'%3E%E5%B2%B8%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <a class="brand" href="#/home" aria-label="上岸行测刷题">
+      <span class="brand-mark">岸</span>
+      <span class="brand-text">
+        <span class="brand-name">上岸</span>
+        <span class="brand-sub">XINGCE · 行测</span>
+      </span>
+    </a>
+    <nav class="nav" id="nav" aria-label="主导航"></nav>
+    <nav class="nav mobile-nav" id="mnav" aria-label="移动导航"></nav>
+    <div class="side-foot" id="side-foot"></div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar" id="topbar"></header>
+    <div class="view" id="view">
+      <div style="padding:80px 0;text-align:center;color:#8a93a6;font-size:13px">正在载入题库…</div>
+    </div>
+  </main>
+</div>
+
+<div id="toast-root" class="toast-root"></div>
+
+<script src="assets/js/core.js"></script>
+<script src="assets/js/bank.js"></script>
+
+<!-- 题库数据：由 tools/fetch_bank.py 生成，可替换为自己的题库 -->
+<script src="assets/data/zzll.js"></script>
+<script src="assets/data/cs.js"></script>
+<script src="assets/data/yy.js"></script>
+<script src="assets/data/sl.js"></script>
+<script src="assets/data/pd.js"></script>
+<script src="assets/data/zl.js"></script>
+
+<script src="assets/js/ai.js"></script>
+<script src="assets/js/views.js"></script>
+<script src="assets/js/practice.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
